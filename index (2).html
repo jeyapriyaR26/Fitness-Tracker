@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fitness Tracker Pro </title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg:#0f1724; /* dark navy */
+      --card:#0b1220;
+      --muted:#94a3b8;
+      --accent:#06b6d4;
+      --glass: rgba(255,255,255,0.03);
+      color-scheme: dark;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071226 0%,#061221 60%);color:#e6eef8}
+    .container{max-width:1200px;margin:28px auto;padding:20px}
+    header{display:flex;align-items:center;gap:18px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#8b5cf6);display:flex;align-items:center;justify-content:center;font-weight:700}
+    h1{font-size:18px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+    .top-row{display:grid;grid-template-columns:1fr 340px;gap:18px;margin-top:18px}
+    .card{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    .stats{display:flex;gap:10px}
+    .stat{flex:1;padding:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:10px}
+    .stat .num{font-size:20px;font-weight:700}
+    .controls{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    .select, .btn{background:var(--glass);border:none;padding:8px 10px;border-radius:8px;color:#d9eefc}
+    .search{flex:1}
+    .chart-wrap{height:220px}
+    .workouts{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .workout{padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
+    .workout h4{margin:0 0 6px 0}
+    .small{font-size:12px;color:var(--muted)}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    @media (max-width:1000px){.top-row{grid-template-columns:1fr} .workouts{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:640px){.workouts{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">IF</div>
+        <div>
+          <h1>Interactive Fitness</h1>
+          <p class="lead">Your workouts, metrics and progress — all in one place</p>
+        </div>
+      </div>
+      <div style="margin-left:auto">
+        <div class="small">Welcome back, <strong>Ash</strong></div>
+      </div>
+    </header>
+
+    <div class="top-row">
+      <section class="card">
+        <div class="controls">
+          <select id="timespan" class="select">
+            <option value="7">Last 7 days</option>
+            <option value="30" selected>Last 30 days</option>
+            <option value="90">Last 90 days</option>
+          </select>
+          <input id="search" class="select search" placeholder="Search exercise or tag">
+          <button id="refresh" class="btn">Refresh</button>
+        </div>
+
+        <div class="stats" style="margin-bottom:12px">
+          <div class="stat">
+            <div class="small">Workouts</div>
+            <div class="num" id="stat-workouts">—</div>
+            <div class="small">Total sessions</div>
+          </div>
+          <div class="stat">
+            <div class="small">Hours</div>
+            <div class="num" id="stat-hours">—</div>
+            <div class="small">Time trained</div>
+          </div>
+          <div class="stat">
+            <div class="small">Calories</div>
+            <div class="num" id="stat-cals">—</div>
+            <div class="small">Estimated burned</div>
+          </div>
+        </div>
+
+        <div class="chart-wrap card" style="padding:12px">
+          <canvas id="lineChart"></canvas>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1">
+            <h3 style="margin:8px 0 6px 0">Recent Workouts</h3>
+            <div id="recentList"></div>
+          </div>
+          <div style="width:220px">
+            <h3 style="margin:8px 0 6px 0">Top Exercises</h3>
+            <ul id="topExercises" class="small" style="padding-left:16px;margin:0"></ul>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h3 style="margin-top:0">Profile & Goals</h3>
+        <p class="small">Weight: <strong id="weight">72 kg</strong></p>
+        <p class="small">Goal: <strong id="goal">Build muscle</strong></p>
+        <div style="height:12px"></div>
+        <h4 style="margin:6px 0">This Week</h4>
+        <div class="small">Progress toward weekly volume</div>
+        <div style="height:12px"></div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px">
+          <div style="height:10px;background:linear-gradient(90deg,var(--accent),#8b5cf6);width:62%;border-radius:6px"></div>
+        </div>
+        <div style="height:18px"></div>
+        <h4 style="margin:6px 0">Quick Actions</h4>
+        <button class="btn" style="width:100%;margin-bottom:8px" onclick="addSampleWorkout()">Add sample workout</button>
+        <button class="btn" style="width:100%" onclick="downloadJSON()">Download data</button>
+      </aside>
+    </div>
+
+    <div class="workouts" id="workoutGrid"></div>
+
+    <footer>
+      Built as a replica — interactive demo. Modify data in the JavaScript to match your backend.
+    </footer>
+  </div>
+
+  <script>
+    // Sample dataset (replace with real API calls)
+    let data = {
+      workouts: generateSampleWorkouts(30),
+    };
+
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    let lineChart;
+
+    function summarize(rangeDays){
+      const cutoff = Date.now() - rangeDays*24*3600*1000;
+      const filtered = data.workouts.filter(w => w.ts >= cutoff);
+      const totalWorkouts = filtered.length;
+      const totalHours = (filtered.reduce((s,w)=>s+w.duration,0)/60).toFixed(1);
+      const totalCals = Math.round(filtered.reduce((s,w)=>s+w.calories,0));
+      document.getElementById('stat-workouts').textContent = totalWorkouts;
+      document.getElementById('stat-hours').textContent = totalHours;
+      document.getElementById('stat-cals').textContent = totalCals;
+
+      // group by day for chart
+      const days = [];
+      for(let i=rangeDays-1;i>=0;i--){
+        const d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
+        days.push({label: d.toLocaleDateString(), ts: d.getTime(), cals:0});
+      }
+      filtered.forEach(w=>{
+        const day = new Date(w.ts); day.setHours(0,0,0,0);
+        const idx = days.findIndex(d=>d.ts===day.getTime());
+        if(idx>=0) days[idx].cals += w.calories;
+      });
+
+      const labels = days.map(d=>d.label);
+      const values = days.map(d=>d.cals);
+
+      if(lineChart) lineChart.destroy();
+      lineChart = new Chart(lineCtx,{
+        type:'line',
+        data:{labels, datasets:[{label:'Calories burned', data:values, tension:0.3, fill:true, backgroundColor:'rgba(6,182,212,0.08)', borderColor:'rgba(6,182,212,0.9)', pointRadius:2}]},
+        options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+      });
+
+      renderRecent(filtered.slice(0,6));
+      renderTopExercises(filtered);
+      renderGrid(filtered);
+    }
+
+    function renderRecent(list){
+      const root = document.getElementById('recentList'); root.innerHTML='';
+      list.forEach(w=>{
+        const el = document.createElement('div'); el.className='small';
+        el.style.padding='6px 0';
+        el.innerHTML = `<strong>${w.name}</strong> • ${w.type} • ${new Date(w.ts).toLocaleString()} • ${w.duration}m`;
+        root.appendChild(el);
+      })
+    }
+
+    function renderTopExercises(list){
+      const map = {};
+      list.forEach(w=>{ w.exercises.forEach(e=>{ map[e.name]=(map[e.name]||0)+e.volume; }) });
+      const arr = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
+      const ul = document.getElementById('topExercises'); ul.innerHTML='';
+      arr.forEach(([name,vol])=>{ const li=document.createElement('li'); li.textContent = `${name} — ${vol} kg`; ul.appendChild(li)});
+    }
+
+    function renderGrid(list){
+      const grid = document.getElementById('workoutGrid'); grid.innerHTML='';
+      (list.slice(0,9)).forEach(w=>{
+        const el = document.createElement('div'); el.className='workout card';
+        el.innerHTML = `<h4>${w.name}</h4><div class='small'>${new Date(w.ts).toLocaleDateString()} • ${w.type}</div><div style='height:8px'></div>
+          <div class='small'>Duration: ${w.duration} min • Calories: ${w.calories}</div>
+          <div style='height:8px'></div>
+          <div class='small'><strong>Exercises</strong></div>
+          <ul class='small' style='padding-left:14px;margin:6px 0'>${w.exercises.map(e=>`<li>${e.name} — ${e.sets}x${e.reps} @ ${e.weight}kg</li>`).join('')}</ul>`;
+        grid.appendChild(el);
+      })
+    }
+
+    document.getElementById('timespan').addEventListener('change',()=>{ summarize(parseInt(document.getElementById('timespan').value)) });
+    document.getElementById('refresh').addEventListener('click',()=>{ summarize(parseInt(document.getElementById('timespan').value)) });
+    document.getElementById('search').addEventListener('input',ev=>{ const q=ev.target.value.toLowerCase(); if(!q) summarize(parseInt(document.getElementById('timespan').value)); else { const filtered = data.workouts.filter(w=> w.name.toLowerCase().includes(q) || w.exercises.some(e=>e.name.toLowerCase().includes(q))); renderGrid(filtered); renderRecent(filtered.slice(0,6)); renderTopExercises(filtered); }});
+
+    // helpers
+    function generateSampleWorkouts(n){
+      const exPool = [
+        {name:'Squat', weight:100}, {name:'Bench Press', weight:70}, {name:'Deadlift', weight:140},
+        {name:'Overhead Press', weight:40},{name:'Pull-up', weight:0},{name:'Row', weight:60},{name:'Bike', weight:0}
+      ];
+      const out=[];
+      for(let i=0;i<n;i++){
+        const daysAgo = Math.floor(Math.random()*60);
+        const ts = Date.now() - daysAgo*24*3600*1000 - Math.floor(Math.random()*6)*3600*1000;
+        const count = 3 + Math.floor(Math.random()*4);
+        const exercises = [];
+        for(let j=0;j<count;j++){
+          const e = exPool[Math.floor(Math.random()*exPool.length)];
+          const sets = 3 + Math.floor(Math.random()*3);
+          const reps = [5,6,8,10][Math.floor(Math.random()*4)];
+          exercises.push({name:e.name, sets, reps, weight: e.weight + Math.floor(Math.random()*20), volume:(e.weight+10) * sets * reps});
+        }
+        const duration = 40 + Math.floor(Math.random()*40);
+        const calories = Math.round(duration * (6 + Math.random()*6));
+        out.push({id:i+1,name: ['Upper','Lower','Full Body','Push','Pull'][Math.floor(Math.random()*5)] + ' session', type: ['Strength','Cardio'][Math.floor(Math.random()*2)], ts, duration, calories, exercises})
+      }
+      return out.sort((a,b)=>b.ts-a.ts);
+    }
+
+    function addSampleWorkout(){
+      const now = Date.now();
+      data.workouts.unshift({id:Date.now(), name:'Quick AM', type:'Strength', ts:now, duration:35, calories:320, exercises:[{name:'Push-up',sets:4,reps:12,weight:0,volume:0}]});
+      summarize(parseInt(document.getElementById('timespan').value));
+    }
+
+    function downloadJSON(){
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='workouts.json'; document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // initial render
+    summarize(30);
+  </script>
+</body>
+</html>
+
